@@ -1,0 +1,199 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+  word_document: default
+  pdf_document:
+    includes: myLatex.tex
+---
+
+ 
+## Introduction
+
+#### Scientific Question: 
+
+With no single drug being universally effective against mutated tumor suppressor genes, how does the genes’ amino acids sequences and 3D protein structures of these tumor suppressor genes P53, NF1, CDKN2A, RB1, MLH1, and BRCA2 compare?
+
+#### Background:
+
+With the role of tumor suppressor genes of limiting cell proliferation and therefore stopping the formation of a tumor in the specific area within the body, a mutation within these genes that causes a loss of function within the gene will result in tumor growth as this is one of the hall marks of cancer (Hinds, 1994). One important tumor suppressor gene that is often found in patients with cancer is the mutation of the gene p53 as the mutation of this gene are found in more than 50% of patients diagnosed with cancer (Soussi 2000). This gene is responsible for stopping the cell cycle progression and allowing the damaged DNA to be repaired or apoptosis to be induced if the damages are not repairable. (Soussi 2000). In terms of other tumor suppressors that are used in this project, one can see that each tumor suppressor gene is important for avoiding different cancers as mutation of those genes will result in different types of diagnosed cancer. However, the p53 gene is the gene that is most often found to be mutated when a patient is diagnosed with cancer. This makes it so perhaps the p53 gene may have some similarity to that of other tumor suppressor genes as they have similar functions. The data for this project was found through the NCBI gene/nucleotide website and the PDB files were found through the RCSB PDB website.     
+
+#### Scientific Hypothesis:
+
+If one single therapy targeting tumor suppressor gene is ineffective, then the tumor suppressor genes P53, NF1, CDKN2A, RB1, MLH1, and BRCA2 are predicted to have less than 70% similarity and possess structurally different binding sites in their 3D protein structure. 
+
+#### Methods:
+I will utilize both the pairwise alignment and multiple sequence alignment and 3D structures bioinformatics method in order to compare the sequences of other tumor suppressors to that of my gene of interest p53 gene. From there, I will create a heat map in order to compare whether other tumor suppressors are similar to that of p53. From the pairwise sequence alignment, I will be able to obtain the sequence alignment score in which will help explain whether the sequences of the tumor suppressors are similar to one another. The heat map combined with the pairwise alignment will give me the alignment score in which will show whether the tumor suppressor genes I am comparing to that of P53 are similar to each other. I will also use Bio3D to compare the protein structures of these tumor suppressors specifically looking at their binding sites. I will also use the sequence logo to look at the conserved sites from these genes as that will help to explain whether these genes are similar to one another.
+
+#### Package Descriptions:
+BiocManager: BiocManager allows us to install and manage packages from the Bioconductor project. This package from the BiocManager allows us utilize different packages such as the package DECIPHER. This package has a lot of the packages needed to do analysis in R.
+
+Biostrings: Biostrings allows us to have accesses to functions that can help with string matching algorithms, string manipulations and manipulation of large sequences or sets of sequences. 
+
+seqinr: This package allows for data analyze and visualization for DNA & protein sequences data. It can also be used for sequence data management. 
+
+msa: This allows us to do multiple sequence alignments of our amino acid sequences and compare them with each other along with having access to the pretty-print function of our multiple sequence alignments that allows for better visualizations of our alignments. 
+
+muscle: This package allows us to perform multiple sequence alignments of nucleotides or amino acid sequences.
+
+bio3d: This package contains the necessary functions needed for analysis of protein structures, and sequences. This package allows us to download and read in a PDB file and find the binding site for that specific protein which can used in the msa pretty print function to get our sequence logos and comparison between the proteins' binding sites.
+
+gplots: This package allows us to use various plotting functions to better visualize our data such as the heat map function that shows the differences between the tumor suppressor genes. 
+
+tinytex:This package allows us to compile our TEX result from running the msa pretty print and compile a pdf version of it for easier viewing of the multiple sequence alignments and the sequence logo for each of our amino acid sequences.  
+
+parallel: This package allows us to compute and compare our multiple sequence more efficiently as it uses the multiple cores on the local computer to speed up the process.
+
+RSQLite: This package allows for core table creation, updating, selection operations, and insertions. 
+
+DECIPHER: This package allows for deciphering and managing sequences such as DNA and amino acids where we can align them via DNA sequences and translate them into single letter amino acids. This also helps us to view the aligned sequences and find the consensus region for them. 
+
+```{r}
+#Packages Needed
+#tinytex::install_tinytex()
+#BiocManager::install("DECIPHER")
+#BiocManager::install("muscle")
+#install.packages("gplots")
+#install.packages("parallel")
+#install.packages("bio3d")
+#install.packages("RSQLite")
+#uncomment the above if your system doesn't already have these packages.
+
+library(BiocManager)
+library(Biostrings)
+library(seqinr)
+library(msa)
+library(muscle)
+library(bio3d)
+library(gplots)
+library(tinytex)
+library(parallel)
+library(RSQLite)
+library(DECIPHER)
+
+```
+
+```{r}
+#Bioinformatics Analysis
+
+#Loading in fasta files for each tumor suppressors & Converting them to vectors to use in other functions
+#The unaligned_sequences_read can be seen as the global variable S4. Since it was not create from a function, this variable can be used by everyone for both inside of functions and outside of it. This will allow us to use this data for our heat map function. 
+
+unaligned_sequences <- "sequences_all.txt"
+
+unaligned_sequences_read <- readAAStringSet(unaligned_sequences)
+#Check the type of this data & length of the data to see how many sequences we have loaded in. This can also be a code check to see if we loaded our data in correctly.
+length(unaligned_sequences_read)
+typeof(unaligned_sequences_read)
+
+
+#This is the DNA string set of of all of our sequences from the fasta file. 
+DNA_sequences_unaligned <- readDNAStringSet(unaligned_sequences)
+
+#Code Check
+DNA_sequences_unaligned
+
+#Alignment of our translated sequences 
+P53_align <- AlignTranslation(DNA_sequences_unaligned, type="AAStringSet")
+P53_align
+
+#This will create a vector that contains our integer data for us to loop through each sequence and create the matrix we need.
+vector_data <- 1:length(unaligned_sequences_read)
+typeof(vector_data)
+
+```
+
+
+```{r}
+#PDB & Bio3d
+
+#This function reads in 1TUP pdb which is the structure of tumor suppressor P53 complexed with DNA. 
+pdb_structure_p53 <- read.pdb("1TUP")
+
+#This will use our pdb file and identify the protein and binding site that it has.
+bs_p53 <- binding.site(pdb_structure_p53)
+
+#This will print out the residues and save the residue numbers to a vector for later analysis.
+bs_resno <- bs_p53$resno
+
+#This gives us the residue names for each of the binding sites that allows for easier visualization of how the binding sites of different genes are made up of.
+bs_p53$resnames
+
+#Code check to see what the first value is in our bs_resno vector and how long the vector is.
+bs_resno[1]
+length(bs_resno)
+
+#Start of the Multiple Sequence Alignment Method 
+
+#This will give us an html output that gives us the amino acid alignments of our genes.
+#Special note for this code, you must run this from R in order to view this as this function will automatically open a link in your URL for you to view the aligned sequences along with their consensus sequences. You cannot view this from just looking at the hmtl version of this notebook.
+BrowseSeqs(P53_align,threshold=0.5,minInformation=0.5,colWidth=100)
+
+system.file("tex", "texshade.sty", package="msa")
+
+sites_msa <- msa(P53_align)
+
+print(sites_msa, show = "complete")
+
+#This is a function from the msa package. You can input "x" of the multiple sequence alignment results "sites_msa" along with the "y" showing the residue sequence range to look at with our image. Setting y = to our bs_resno[1] index will look at our first binding site and the sequences from 2000 base pairs to 3000 base pairs for aligned sequences. We can also customize the resulting prints to show different colors and highlights.  
+msaPrettyPrint(sites_msa, output="tex", y=c((bs_resno[1]+2000), (bs_resno[length(bs_resno)]+3000)),subset=c(1:6),showNames="left",showLogo="top",logoColors="rasmol", shadingMode="functional", shadingModeArg="hydropathy",showLegend=FALSE,askForOverwrite=FALSE)
+
+```
+
+
+
+```{r}
+#Pairwise & Heat Map
+#This is a created function that would take in any S4 sequences and run it through the function to create a matrix from the pairwise alignment functions and uses this to get the matrix needed for our heat map visualization to form. This function can utilize the S4 global variable which can be used outside of functions compared to local variables which have to be used within functions. Making it a bit more useful for reproducing the results for different sequences for future studies. 
+
+Matrix2Heatmap <- function(S4sequences, seq_length) {
+  #This is a nested for loop that will allow us to add values into the forheatmap matrix
+  forheatmap <- matrix(nrow=length(vector_data), ncol=length(vector_data))
+  
+  for (a in seq_length) {
+    for (b in seq_length){
+      #These are the variables for each sequences from the aligned sequences
+      string1 <- S4sequences[a]
+      string2 <- S4sequences[b]
+     
+      #These functions turn the string1 variable into character string
+      dsl = AAStringSetList(string1)
+      as.character(unlist(dsl))
+      cl = as(dsl, "CharacterList")
+      as.list(cl)
+      
+      #These function turn the string2 variable into character string
+      dsl2 = AAStringSetList(string2)
+      as.character(unlist(dsl2))
+      cl2 = as(dsl2, "CharacterList")
+      as.list(cl2)
+      
+      #This code performs the pairwise alignment for two strings
+      pa <- pairwiseAlignment(pattern = c(cl2), subject = cl)
+      
+      #This code assigns the score taken from the pairwise sequence alignment to the matrix.
+      forheatmap[a,b] <- score(pa)
+    }
+  }
+  return(forheatmap)
+}
+
+#This prints the values in the heat map and store it into the variable.
+sequence_matrix_alignment <- Matrix2Heatmap(P53_align, vector_data)
+
+sequence_matrix_alignment
+
+#Create the heat map with a color key legend for visualization.
+heatmap.2(sequence_matrix_alignment)
+
+```
+
+#### Result Analysis
+From the results found through our bioinformatics method, the heat map shows that the amino acid sequences of the p53 gene is most similar to that of the sequences from CDKN2A as these two sequences are grouped into a cluster. Even though they are deemed as most similar compared to the other sequences, one can see that based on the color of the heat map that their similarities fall approximately around 50% as the alignment value is approximately 10000 out of 20000. These scores were obtained from the pairwise alignment scores as seen in the function. This result can also be seen in the sequence logo of these amino acids sequences as they have different amino acids for their binding sites as seen in the msa pretty print results. From here, the cluster of p53 and CDKN2A is similar to that of the MLH1 gene in which those three clustered together is close to that of the RB1 gene. However, looking at the heat map shows that their sequence identity is approximately 50%. From the msa pretty print which shows the results for the multiple sequence alignments and the sequence logos, one can see that both the p53 gene and the other tumor suppressor genes does not share common amino acids in their binding sites. These results were obtained from the bio3D as the binding sites of each protein were identified and noted into the sequences used. From the multiple alignment sequences looking for consensus regions, one can see that these tumor suppressor genes don’t share a defined consensus region with the p53 gene as there are some shared consensuses between some of the genes but not all of them. This is quite surprising as these genes are tumor suppressors within the human body that have very similar functions, but their form are very different from one another. These data help to support my hypothesis that one single therapy targeting these tumor suppressor genes are ineffective as they have sequence identity that are less than 70% compared to each other and their binding sites have different amino acids residues. This shows that for treating tumor suppressors, the physician must first identify which tumor suppressors are not working properly and find a specific treatment for that gene as compared to prescribing a single therapy for treating all tumor suppressors. This is what makes mutated tumor suppressors extremely difficult as each tumor suppressor gene differ greatly from one another in terms of their binding sites and how they operate.  
+
+
+#### References:
+Hinds, P W, and R A Weinberg. “Tumor suppressor genes.” Current opinion in genetics & development vol. 4,1 (1994): 135-41. doi:10.1016/0959-437x(94)90102-3
+
+Soussi, T. “The p53 tumor suppressor gene: from molecular biology to clinical investigation.” Annals of the New York Academy of Sciences vol. 910 (2000): 121-37; discussion 137-9. doi:10.1111/j.1749-6632.2000.tb06705.x
